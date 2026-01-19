@@ -24,10 +24,10 @@ export class ErrorParser {
     // Check status code first (429/529 are rate limit/quota errors)
     if (err.status === 429 || err.status === 529) {
       const message = this.extractMessage(err)
-      // Check for Google RESOURCE_EXHAUSTED which is quota, not rate limit
       const nestedError = err.error as Record<string, unknown> | undefined
       const nestedStatus = String(nestedError?.status ?? "").toLowerCase()
-      const isResourceExhausted = nestedStatus === "resource_exhausted" || message.toLowerCase().includes("exhausted")
+      const isResourceExhausted =
+        nestedStatus === "resource_exhausted" || message.toLowerCase().includes("exhausted")
 
       const errorType = (err.status === 529 || isResourceExhausted) ? "quota" : "rate_limit"
       return {
@@ -83,12 +83,16 @@ export class ErrorParser {
     // Detect provider from error type patterns
     let provider = parentProvider
     if (provider === "unknown") {
-      if (errorType.includes("rate_limit") || errorType === "quota_exceeded") {
-        provider = "anthropic"
-      } else if (errorCode.includes("rate_limit") || errorCode.includes("insufficient_quota")) {
+      if (errorCode.includes("rate_limit") || errorCode.includes("insufficient_quota")) {
         provider = "openai"
       } else if (errorStatus === "resource_exhausted") {
         provider = "google"
+      } else if (
+        errorType.includes("rate_limit") ||
+        errorType === "quota_exceeded" ||
+        errorType === "overloaded_error"
+      ) {
+        provider = "anthropic"
       }
     }
 
@@ -267,14 +271,17 @@ export class ErrorParser {
     const errorCode = String(nestedError.code ?? "").toLowerCase()
     const errorStatus = String(nestedError.status ?? "").toLowerCase()
 
-    // Anthropic uses type: "rate_limit_error" or "quota_exceeded"
-    if (errorType.includes("rate_limit") || errorType === "quota_exceeded") {
-      return "anthropic"
-    }
-
     // OpenAI uses code: "rate_limit_exceeded" or "insufficient_quota"
     if (errorCode.includes("rate_limit") || errorCode.includes("insufficient")) {
       return "openai"
+    }
+
+    if (
+      errorType.includes("rate_limit") ||
+      errorType === "quota_exceeded" ||
+      errorType === "overloaded_error"
+    ) {
+      return "anthropic"
     }
 
     // Google uses status: "RESOURCE_EXHAUSTED"

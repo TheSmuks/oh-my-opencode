@@ -20,13 +20,13 @@ describe("ErrorParser", () => {
     expect(result.message).toBe("Rate limit exceeded")
   })
 
-  it("should detect Anthropic quota exceeded error", () => {
+  it("should detect Anthropic overloaded error", () => {
     const parser = new ErrorParser()
     const error = {
       status: 529,
       error: {
-        type: "quota_exceeded",
-        message: "Quota exceeded",
+        type: "overloaded_error",
+        message: "Overloaded",
       },
     }
 
@@ -41,6 +41,23 @@ describe("ErrorParser", () => {
     const parser = new ErrorParser()
     const error = {
       error: {
+        message: "Rate limit exceeded",
+        code: "rate_limit_exceeded",
+      },
+    }
+
+    const result = parser.parseError(error)
+
+    expect(result.isRotationTriggering).toBe(true)
+    expect(result.errorType).toBe("rate_limit")
+    expect(result.provider).toBe("openai")
+  })
+
+  it("should not misclassify OpenAI rate_limit_error as Anthropic", () => {
+    const parser = new ErrorParser()
+    const error = {
+      error: {
+        type: "rate_limit_error",
         message: "Rate limit exceeded",
         code: "rate_limit_exceeded",
       },
