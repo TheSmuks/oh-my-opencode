@@ -80,7 +80,13 @@ export class RotationEngine {
   private findNextAvailableModel(availableModels: string[], currentModel: string): string | null {
     this.stateManager.pruneOldModels(30)
 
-    for (const model of availableModels) {
+    const currentIndex = availableModels.indexOf(currentModel)
+    const modelCount = availableModels.length
+
+    for (let i = 1; i <= modelCount; i++) {
+      const nextIndex = (currentIndex + i) % modelCount
+      const model = availableModels[nextIndex]
+
       if (model === currentModel) continue
 
       const state = this.stateManager.getModelState(model)

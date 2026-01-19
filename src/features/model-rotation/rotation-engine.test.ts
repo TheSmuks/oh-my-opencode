@@ -30,6 +30,74 @@ describe("RotationEngine", () => {
     expect(result.nextModel).toBe("b")
   })
 
+  it("should select next model in round-robin order (not restart from first)", () => {
+    // #given a rotation engine with models ["a", "b", "c"] where all are available
+    const stateManager = createStateManager()
+    const config: RotationConfig = {
+      enabled: true,
+      limitType: "calls",
+      limitValue: 10,
+      cooldownMs: 60_000,
+    }
+    const engine = new RotationEngine("test-agent", config, stateManager)
+
+    // #when we rotate away from "b"
+    const result = engine.rotateOnError("b", ["a", "b", "c"])
+
+    // #then it should select "c" (next after "b"), not "a" (first in array)
+    expect(result.rotated).toBe(true)
+    expect(result.nextModel).toBe("c")
+  })
+
+  it("should wrap around to first model when current is last", () => {
+    // #given a rotation engine with models ["a", "b", "c"]
+    const stateManager = createStateManager()
+    const config: RotationConfig = {
+      enabled: true,
+      limitType: "calls",
+      limitValue: 10,
+      cooldownMs: 60_000,
+    }
+    const engine = new RotationEngine("test-agent", config, stateManager)
+
+    // #when we rotate away from "c" (last model)
+    const result = engine.rotateOnError("c", ["a", "b", "c"])
+
+    // #then it should wrap around to "a"
+    expect(result.rotated).toBe(true)
+    expect(result.nextModel).toBe("a")
+  })
+
+  it("should skip depleted models in round-robin order", () => {
+    // #given model "c" is depleted and in cooldown
+    const stateManager = createStateManager()
+    const config: RotationConfig = {
+      enabled: true,
+      limitType: "calls",
+      limitValue: 10,
+      cooldownMs: 60_000,
+    }
+    const engine = new RotationEngine("test-agent", config, stateManager)
+
+    // Mark "c" as depleted with active cooldown (future expiry)
+    stateManager.updateModelState("c", (current) => ({
+      ...current,
+      usage: {
+        ...current.usage,
+        inCooldown: true,
+        cooldownUntil: new Date(Date.now() + 60_000).toISOString(),
+      },
+      depleted: true,
+    }))
+
+    // #when we rotate away from "b"
+    const result = engine.rotateOnError("b", ["a", "b", "c"])
+
+    // #then it should skip "c" (depleted) and wrap to "a"
+    expect(result.rotated).toBe(true)
+    expect(result.nextModel).toBe("a")
+  })
+
   it("should re-activate model when cooldown expired", () => {
     const stateManager = createStateManager()
     const config: RotationConfig = {
