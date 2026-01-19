@@ -12,6 +12,8 @@ const AGENTS_WITH_ROTATION = new Map<string, {
   availableModels: string[]
 }>()
 
+const SESSION_LAST_RECORDED_TOKENS = new Map<string, number>()
+
 function normalizeModels(model: string | string[] | undefined): string[] {
   if (!model) return []
   if (Array.isArray(model)) return model
@@ -42,9 +44,12 @@ export function createRotationHooks(ctx: RotationHooksContext): Hooks | null {
     rotationEnabledAgents.push(agentName)
   }
 
-  if (rotationEnabledAgents.length === 0) {
-    return null
-  }
+   if (rotationEnabledAgents.length === 0) {
+     return null
+   }
+
+   ;(ctx.pluginCtx as any).__rotationTest = { agents: rotationEnabledAgents, map: AGENTS_WITH_ROTATION }
+
 
   const showToast = (title: string, message: string, variant: "info" | "success" | "warning" | "error") => {
     ctx.pluginCtx.client.tui
@@ -59,8 +64,9 @@ export function createRotationHooks(ctx: RotationHooksContext): Hooks | null {
       .catch(() => {})
   }
 
-  return {
-    event: async (eventInput) => {
+   const hooks: Hooks = {
+     event: async (eventInput) => {
+
       if (eventInput.event.type !== "message.updated") return
 
       const info = eventInput.event.properties as { info?: unknown } | undefined
@@ -120,6 +126,20 @@ export function createRotationHooks(ctx: RotationHooksContext): Hooks | null {
          }
        })()
 
+       const sessionID = (eventInput.event.properties as { sessionID?: unknown } | undefined)?.sessionID
+       if (typeof sessionID === "string") {
+         const key = `${sessionID}:${agentName}:${currentModel}`
+         const lastRecorded = SESSION_LAST_RECORDED_TOKENS.get(key)
+
+         if (typeof tokensUsed === "number") {
+           if (lastRecorded === tokensUsed) return
+           SESSION_LAST_RECORDED_TOKENS.set(key, tokensUsed)
+         } else {
+           if (lastRecorded !== undefined) return
+           SESSION_LAST_RECORDED_TOKENS.set(key, -1)
+         }
+       }
+
        rotationData.engine.recordUsage(currentModel, tokensUsed)
 
        if (!infoObj.error) return
@@ -154,6 +174,11 @@ export function createRotationHooks(ctx: RotationHooksContext): Hooks | null {
           "info"
         )
       }
-    },
-  }
-}
+     },
+   }
+
+   ;(hooks as any).__rotationTest = { engineByAgent: AGENTS_WITH_ROTATION }
+
+   return hooks
+ }
+
