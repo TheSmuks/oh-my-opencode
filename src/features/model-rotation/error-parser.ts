@@ -105,6 +105,7 @@ export class ErrorParser {
     if (
       errorType.includes("rate_limit") ||
       errorType.includes("quota") ||
+      errorType === "overloaded_error" ||
       errorCode.includes("rate_limit") ||
       errorCode.includes("quota") ||
       errorCode.includes("insufficient") ||

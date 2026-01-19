@@ -37,6 +37,23 @@ describe("ErrorParser", () => {
     expect(result.provider).toBe("anthropic")
   })
 
+  it("should trigger rotation for overloaded_error even without keywords in message", () => {
+    const parser = new ErrorParser()
+    const error = {
+      status: 529,
+      error: {
+        type: "overloaded_error",
+        message: "Server temporarily busy",
+      },
+    }
+
+    const result = parser.parseError(error)
+
+    expect(result.isRotationTriggering).toBe(true)
+    expect(result.errorType).toBe("quota")
+    expect(result.provider).toBe("anthropic")
+  })
+
   it("should detect OpenAI rate limit error", () => {
     const parser = new ErrorParser()
     const error = {
