@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync, unlinkSync } from "node:fs"
 import { dirname, join } from "node:path"
-import { homedir } from "node:os"
+import { getOpenCodeConfigDir } from "../../shared/opencode-config-dir"
 import type { RotationState, ModelRotationState, ModelUsageStats } from "./types"
 import { STATE_FILENAME } from "./constants"
 
@@ -76,11 +76,15 @@ export class RotationStateManager {
     this.saveState()
   }
 
-  incrementUsage(model: string): void {
+  incrementUsage(model: string, tokensUsed?: number): void {
     this.updateModelState(model, (current) => ({
       usage: {
         ...current.usage,
         callCount: current.usage.callCount + 1,
+        tokenCount:
+          typeof tokensUsed === "number"
+            ? (current.usage.tokenCount ?? 0) + tokensUsed
+            : current.usage.tokenCount,
         lastUsedAt: new Date().toISOString(),
       },
       depleted: current.depleted,
@@ -219,7 +223,10 @@ let sharedStateManager: RotationStateManager | null = null
  */
 export function getSharedStateManager(): RotationStateManager {
   if (!sharedStateManager) {
-    const configDir = join(homedir(), ".config", "opencode")
+    const configDir = getOpenCodeConfigDir({
+      binary: "opencode",
+      version: null,
+    })
     sharedStateManager = new RotationStateManager(configDir)
   }
   return sharedStateManager

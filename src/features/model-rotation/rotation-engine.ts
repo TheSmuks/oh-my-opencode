@@ -31,7 +31,23 @@ export class RotationEngine {
     }
 
     if (this.config.limitType === "calls" && currentStats.callCount >= this.config.limitValue) {
-      return this.rotate(currentModel, availableModels, `Usage limit reached (${currentStats.callCount}/${this.config.limitValue} calls)`)
+      return this.rotate(
+        currentModel,
+        availableModels,
+        `Usage limit reached (${currentStats.callCount}/${this.config.limitValue} calls)`
+      )
+    }
+
+    if (
+      this.config.limitType === "tokens" &&
+      typeof currentStats.tokenCount === "number" &&
+      currentStats.tokenCount >= this.config.limitValue
+    ) {
+      return this.rotate(
+        currentModel,
+        availableModels,
+        `Usage limit reached (${currentStats.tokenCount}/${this.config.limitValue} tokens)`
+      )
     }
 
     return { rotated: false, nextModel: null, reason: null, allDepleted: false }
@@ -79,9 +95,9 @@ export class RotationEngine {
     return null
   }
 
-  recordUsage(model: string): void {
+  recordUsage(model: string, tokensUsed?: number): void {
     if (this.config.enabled) {
-      this.stateManager.incrementUsage(model)
+      this.stateManager.incrementUsage(model, tokensUsed)
     }
   }
 

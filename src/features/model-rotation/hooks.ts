@@ -82,7 +82,48 @@ export function createRotationHooks(ctx: RotationHooksContext): Hooks | null {
         errorPreview: infoObj.error ? JSON.stringify(infoObj.error).slice(0, 200) : null,
       })
 
-      if (infoObj.role !== "assistant" || !infoObj.error) return
+       if (infoObj.role !== "assistant") return
+
+       const agentName = typeof infoObj.agent === "string" ? infoObj.agent : undefined
+       if (!agentName) return
+
+       const rotationData = AGENTS_WITH_ROTATION.get(agentName)
+       if (!rotationData) return
+
+       const modelID = typeof infoObj.modelID === "string" ? infoObj.modelID : undefined
+       const currentModel = modelID ?? ""
+
+       if (!currentModel) return
+
+       const tokensUsed = await (async () => {
+         try {
+           const sessionID = (eventInput.event.properties as { sessionID?: unknown } | undefined)?.sessionID
+           if (typeof sessionID !== "string") return undefined
+
+           const response = await ctx.pluginCtx.client.session.messages({
+             path: { id: sessionID },
+           })
+
+           const messages = (response.data ?? response) as { info: { role?: unknown; tokens?: unknown } }[]
+
+           const assistantMessages = messages.filter((m) => m.info.role === "assistant")
+           if (assistantMessages.length === 0) return undefined
+
+           const lastAssistant = assistantMessages[assistantMessages.length - 1]
+           const tokens = lastAssistant.info.tokens as
+             | { input?: number; output?: number; cache?: { read?: number } }
+             | undefined
+
+           return (tokens?.input ?? 0) + (tokens?.cache?.read ?? 0) + (tokens?.output ?? 0)
+         } catch {
+           return undefined
+         }
+       })()
+
+       rotationData.engine.recordUsage(currentModel, tokensUsed)
+
+       if (!infoObj.error) return
+
 
       const error = infoObj.error
       const parsedError = errorParser.parseError(error)
@@ -92,20 +133,10 @@ export function createRotationHooks(ctx: RotationHooksContext): Hooks | null {
         isRotationTriggering: parsedError.isRotationTriggering,
       })
 
-      if (!parsedError.isRotationTriggering) return
+       if (!parsedError.isRotationTriggering) return
 
-      const agentName = typeof infoObj.agent === "string" ? infoObj.agent : undefined
-      if (!agentName) return
+       const result = rotationData.engine.rotateOnError(currentModel, rotationData.availableModels)
 
-      const rotationData = AGENTS_WITH_ROTATION.get(agentName)
-      if (!rotationData) return
-
-      const modelID = typeof infoObj.modelID === "string" ? infoObj.modelID : undefined
-      const currentModel = modelID ?? ""
-
-      if (!currentModel) return
-
-      const result = rotationData.engine.rotateOnError(currentModel, rotationData.availableModels)
 
       if (result.allDepleted) {
         showToast(

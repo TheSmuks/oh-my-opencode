@@ -19,8 +19,12 @@ State: {current model or "not tracked yet"}
 
 ## Instructions
 
-1. Read rotation configuration from: ~/.config/opencode/oh-my-opencode.json
-2. Read rotation state from: ~/.config/opencode/model-rotation-state.json (if exists)
+1. Determine OpenCode config directory:
+   - If $OPENCODE_CONFIG_DIR is set, use that
+   - Else on Linux/macOS use $XDG_CONFIG_HOME/opencode (or ~/.config/opencode)
+   - Else on Windows use %APPDATA%\\opencode (fallback: ~/.config/opencode)
+2. Read rotation configuration from: {configDir}/oh-my-opencode.json
+3. Read rotation state from: {configDir}/model-rotation-state.json (if exists)
 3. Display all agents with rotation.enabled=true
 4. For each agent, show their model pool and rotation config
 5. If state file exists, show current tracked model for each agent
