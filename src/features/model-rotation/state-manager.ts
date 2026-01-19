@@ -108,6 +108,8 @@ export class RotationStateManager {
     this.updateModelState(model, (current) => ({
       usage: {
         ...current.usage,
+        callCount: 0,
+        tokenCount: undefined,
         inCooldown: false,
         cooldownUntil: null,
       },

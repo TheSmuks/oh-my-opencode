@@ -98,12 +98,13 @@ describe("RotationEngine", () => {
     expect(result.nextModel).toBe("a")
   })
 
-  it("should re-activate model when cooldown expired", () => {
+  it("should re-activate model when cooldown expired and reset usage counters", () => {
+    // #given a model that was depleted due to hitting limits
     const stateManager = createStateManager()
     const config: RotationConfig = {
       enabled: true,
       limitType: "calls",
-      limitValue: 1,
+      limitValue: 10,
       cooldownMs: 60_000,
     }
 
@@ -113,17 +114,23 @@ describe("RotationEngine", () => {
       ...current,
       usage: {
         ...current.usage,
+        callCount: 10,
+        tokenCount: 50000,
         inCooldown: true,
         cooldownUntil: new Date(Date.now() - 1000).toISOString(),
       },
       depleted: true,
     }))
 
+    // #when cooldown expires and model is re-selected
     const next = engine.getNextModel(["a", "b"], "a")
 
+    // #then model should be available with reset counters
     expect(next).toBe("b")
     const state = stateManager.getModelState("b")
     expect(state?.depleted).toBe(false)
     expect(state?.usage.inCooldown).toBe(false)
+    expect(state?.usage.callCount).toBe(0)
+    expect(state?.usage.tokenCount).toBeUndefined()
   })
 })
