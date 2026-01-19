@@ -138,15 +138,14 @@ function mergeAgentConfig(
 
   if (model) {
     const models = Array.isArray(model) ? model : [model]
-    let selectedModel: string | undefined
 
-    if (rotation?.enabled && models.length > 1) {
-      selectedModel = selectAvailableModel(models) ?? models[0]
-    } else {
-      selectedModel = models.length > 0 ? models[0] : undefined
+    if (models.length > 0) {
+      const selectedModel = rotation?.enabled && models.length > 1
+        ? (selectAvailableModel(models) ?? models[0])
+        : models[0]
+
+      merged.model = selectedModel
     }
-
-    merged.model = selectedModel
   }
 
   if (rotation) {
@@ -164,9 +163,7 @@ export function createBuiltinAgents(
   categories?: CategoriesConfig,
   gitMasterConfig?: GitMasterConfig
 ): Record<string, AgentConfig> {
-  if (!systemDefaultModel) {
-    throw new Error("createBuiltinAgents requires systemDefaultModel")
-  }
+  const defaultModel = systemDefaultModel ?? ""
 
   const result: Record<string, AgentConfig> = {}
   const availableAgents: AvailableAgent[] = []
@@ -183,7 +180,7 @@ export function createBuiltinAgents(
     if (disabledAgents.includes(agentName)) continue
 
     const override = agentOverrides[agentName]
-    const model = normalizeModel(override?.model, systemDefaultModel, override?.rotation)
+    const model = normalizeModel(override?.model, defaultModel, override?.rotation)
 
     let config = buildAgent(source, model, mergedCategories, gitMasterConfig)
 
@@ -210,7 +207,7 @@ export function createBuiltinAgents(
 
   if (!disabledAgents.includes("Sisyphus")) {
     const sisyphusOverride = agentOverrides["Sisyphus"]
-    const sisyphusModel = normalizeModel(sisyphusOverride?.model, systemDefaultModel, sisyphusOverride?.rotation)
+    const sisyphusModel = normalizeModel(sisyphusOverride?.model, defaultModel, sisyphusOverride?.rotation)
 
     let sisyphusConfig = createSisyphusAgent(sisyphusModel, availableAgents)
 
@@ -226,11 +223,11 @@ export function createBuiltinAgents(
     result["Sisyphus"] = sisyphusConfig
   }
 
-  if (!disabledAgents.includes("orchestrator-sisyphus")) {
+  if (!disabledAgents.includes("orchestrator-sisyphus") && defaultModel) {
     const orchestratorOverride = agentOverrides["orchestrator-sisyphus"]
     const orchestratorModel = normalizeModel(
       orchestratorOverride?.model,
-      systemDefaultModel,
+      defaultModel,
       orchestratorOverride?.rotation
     )
     let orchestratorConfig = createOrchestratorSisyphusAgent({

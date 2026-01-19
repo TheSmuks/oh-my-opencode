@@ -58,6 +58,13 @@ describe("createBuiltinAgents with model overrides", () => {
     expect(agents.oracle.reasoningEffort).toBeUndefined()
   })
 
+   test("does not throw when systemDefaultModel is omitted", () => {
+     const agents = createBuiltinAgents()
+     expect(agents.Sisyphus).toBeDefined()
+     expect(agents["orchestrator-sisyphus"]).toBeUndefined()
+   })
+
+
   test("Oracle with GPT model override has reasoningEffort, no thinking", () => {
     // #given
     const overrides = {
