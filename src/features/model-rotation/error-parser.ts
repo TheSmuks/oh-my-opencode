@@ -26,10 +26,15 @@ export class ErrorParser {
       const message = this.extractMessage(err)
       const nestedError = err.error as Record<string, unknown> | undefined
       const nestedStatus = String(nestedError?.status ?? "").toLowerCase()
-      const isResourceExhausted =
-        nestedStatus === "resource_exhausted" || message.toLowerCase().includes("exhausted")
+      const nestedCode = String(nestedError?.code ?? "").toLowerCase()
+      const nestedMessage = String(nestedError?.message ?? "").toLowerCase()
+      const isQuotaError =
+        nestedStatus === "resource_exhausted" ||
+        message.toLowerCase().includes("exhausted") ||
+        nestedCode.includes("insufficient") ||
+        nestedMessage.includes("insufficient")
 
-      const errorType = (err.status === 529 || isResourceExhausted) ? "quota" : "rate_limit"
+      const errorType = err.status === 529 || isQuotaError ? "quota" : "rate_limit"
       return {
         isRotationTriggering: true,
         errorType,

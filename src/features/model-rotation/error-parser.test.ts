@@ -86,6 +86,23 @@ describe("ErrorParser", () => {
     expect(result.provider).toBe("openai")
   })
 
+  it("should detect OpenAI insufficient_quota error with 429 status as quota", () => {
+    const parser = new ErrorParser()
+    const error = {
+      status: 429,
+      error: {
+        message: "Insufficient quota",
+        code: "insufficient_quota",
+      },
+    }
+
+    const result = parser.parseError(error)
+
+    expect(result.isRotationTriggering).toBe(true)
+    expect(result.errorType).toBe("quota")
+    expect(result.provider).toBe("openai")
+  })
+
   it("should detect Google resource exhausted error", () => {
     const parser = new ErrorParser()
     const error = {
