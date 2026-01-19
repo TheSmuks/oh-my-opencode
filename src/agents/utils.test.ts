@@ -45,18 +45,18 @@ describe("createBuiltinAgents with model overrides", () => {
     expect(agents.Sisyphus.thinking).toBeUndefined()
   })
 
-  test("Oracle with default model has reasoningEffort", () => {
-    // #given - no overrides, using systemDefaultModel for other agents
-    // Oracle uses its own default model (openai/gpt-5.2) from the factory singleton
+   test("Oracle with default model has reasoningEffort", () => {
+     // #given - no overrides, using systemDefaultModel for other agents
+     // Oracle uses its own default model (openai/gpt-5.2) from the factory singleton
 
-    // #when
-    const agents = createBuiltinAgents([], {}, undefined, TEST_DEFAULT_MODEL)
+     // #when
+     const agents = createBuiltinAgents([], {}, undefined, TEST_DEFAULT_MODEL)
 
-    // #then - Oracle uses systemDefaultModel since model is now required
-    expect(agents.oracle.model).toBe("anthropic/claude-opus-4-5")
-    expect(agents.oracle.thinking).toEqual({ type: "enabled", budgetTokens: 32000 })
-    expect(agents.oracle.reasoningEffort).toBeUndefined()
-  })
+     // #then - Oracle uses systemDefaultModel since model is now required
+     expect(agents.oracle.model).toBe("anthropic/claude-opus-4-5")
+     expect(agents.oracle.thinking).toEqual({ type: "enabled", budgetTokens: 32000 })
+     expect(agents.oracle.reasoningEffort).toBeUndefined()
+   })
 
    test("does not throw when systemDefaultModel is omitted", () => {
      const agents = createBuiltinAgents()
@@ -64,8 +64,19 @@ describe("createBuiltinAgents with model overrides", () => {
      expect(agents["orchestrator-sisyphus"]).toBeUndefined()
    })
 
+   test("creates orchestrator-sisyphus when systemDefaultModel is omitted but override model exists", () => {
+     const agents = createBuiltinAgents([], {
+       "orchestrator-sisyphus": {
+         model: TEST_DEFAULT_MODEL,
+       },
+     })
 
-  test("Oracle with GPT model override has reasoningEffort, no thinking", () => {
+     expect(agents["orchestrator-sisyphus"]).toBeDefined()
+     expect(agents["orchestrator-sisyphus"]?.model).toBe(TEST_DEFAULT_MODEL)
+   })
+
+   test("Oracle with GPT model override has reasoningEffort, no thinking", () => {
+
     // #given
     const overrides = {
       oracle: { model: "openai/gpt-5.2" },

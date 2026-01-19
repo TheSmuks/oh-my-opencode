@@ -223,8 +223,9 @@ export function createBuiltinAgents(
     result["Sisyphus"] = sisyphusConfig
   }
 
-  if (!disabledAgents.includes("orchestrator-sisyphus") && defaultModel) {
-    const orchestratorOverride = agentOverrides["orchestrator-sisyphus"]
+  const orchestratorOverride = agentOverrides["orchestrator-sisyphus"]
+
+  if (!disabledAgents.includes("orchestrator-sisyphus") && (defaultModel || orchestratorOverride?.model)) {
     const orchestratorModel = normalizeModel(
       orchestratorOverride?.model,
       defaultModel,
