@@ -74,9 +74,4 @@ export type OverridableAgentName =
 
 export type AgentName = BuiltinAgentName
 
-export type AgentOverrideConfig = Partial<AgentConfig> & {
-  prompt_append?: string
-  variant?: string
-}
-
-export type AgentOverrides = Partial<Record<OverridableAgentName, AgentOverrideConfig>>
+export type { AgentOverrideConfig, AgentOverrides } from "../config/schema"

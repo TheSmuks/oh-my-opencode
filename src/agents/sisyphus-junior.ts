@@ -5,6 +5,7 @@ import {
   createAgentToolRestrictions,
   type PermissionValue,
 } from "../shared/permission-compat"
+import { selectAvailableModel } from "../features/model-rotation/state-manager"
 
 const SISYPHUS_JUNIOR_PROMPT = `<Role>
 Sisyphus-Junior - Focused executor from OhMyOpenCode.
@@ -90,7 +91,17 @@ export function createSisyphusJuniorAgentWithOverrides(
     override = undefined
   }
 
-  const model = override?.model ?? systemDefaultModel ?? SISYPHUS_JUNIOR_DEFAULTS.model
+  const rawModel = override?.model ?? systemDefaultModel ?? SISYPHUS_JUNIOR_DEFAULTS.model
+  const model: string = (() => {
+    if (typeof rawModel === "string") return rawModel
+    if (Array.isArray(rawModel) && rawModel.length > 0) {
+      if (override?.rotation?.enabled) {
+        return selectAvailableModel(rawModel) ?? rawModel[0]
+      }
+      return rawModel[0]
+    }
+    return SISYPHUS_JUNIOR_DEFAULTS.model
+  })()
   const temperature = override?.temperature ?? SISYPHUS_JUNIOR_DEFAULTS.temperature
 
   const promptAppend = override?.prompt_append

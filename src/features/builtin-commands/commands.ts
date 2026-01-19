@@ -4,6 +4,7 @@ import { INIT_DEEP_TEMPLATE } from "./templates/init-deep"
 import { RALPH_LOOP_TEMPLATE, CANCEL_RALPH_TEMPLATE } from "./templates/ralph-loop"
 import { REFACTOR_TEMPLATE } from "./templates/refactor"
 import { START_WORK_TEMPLATE } from "./templates/start-work"
+import { ROTATION_STATUS_TEMPLATE } from "./templates/rotation-status"
 
 const BUILTIN_COMMAND_DEFINITIONS: Record<BuiltinCommandName, Omit<CommandDefinition, "name">> = {
   "init-deep": {
@@ -69,6 +70,12 @@ Timestamp: $TIMESTAMP
 $ARGUMENTS
 </user-request>`,
     argumentHint: "[plan-name]",
+  },
+  "rotation-status": {
+    description: "(builtin) Display model rotation status for all agents",
+    template: `<command-instruction>
+${ROTATION_STATUS_TEMPLATE}
+</command-instruction>`,
   },
 }
 

@@ -1,6 +1,6 @@
 import type { AgentConfig } from "@opencode-ai/sdk"
 import type { BuiltinAgentName, AgentOverrideConfig, AgentOverrides, AgentFactory, AgentPromptMetadata } from "./types"
-import type { CategoriesConfig, CategoryConfig, GitMasterConfig } from "../config/schema"
+import type { CategoriesConfig, CategoryConfig, GitMasterConfig, RotationConfig } from "../config/schema"
 import { createSisyphusAgent } from "./sisyphus"
 import { createOracleAgent, ORACLE_PROMPT_METADATA } from "./oracle"
 import { createLibrarianAgent, LIBRARIAN_PROMPT_METADATA } from "./librarian"
@@ -15,6 +15,17 @@ import type { AvailableAgent } from "./sisyphus-prompt-builder"
 import { deepMerge } from "../shared"
 import { DEFAULT_CATEGORIES } from "../tools/delegate-task/constants"
 import { resolveMultipleSkills } from "../features/opencode-skill-loader/skill-content"
+import { selectAvailableModel } from "../features/model-rotation/state-manager"
+
+function normalizeModel(model: string | string[] | undefined, fallback: string, rotation?: RotationConfig): string {
+  if (!model) return fallback
+  if (typeof model === "string") return model
+  if (model.length === 0) return fallback
+  if (rotation?.enabled && model.length > 1) {
+    return selectAvailableModel(model) ?? model[0]
+  }
+  return model[0]
+}
 
 type AgentSource = AgentFactory | AgentConfig
 
@@ -118,11 +129,28 @@ function mergeAgentConfig(
   base: AgentConfig,
   override: AgentOverrideConfig
 ): AgentConfig {
-  const { prompt_append, ...rest } = override
+  const { prompt_append, model, rotation, ...rest } = override
   const merged = deepMerge(base, rest as Partial<AgentConfig>)
 
   if (prompt_append && merged.prompt) {
     merged.prompt = merged.prompt + "\n" + prompt_append
+  }
+
+  if (model) {
+    const models = Array.isArray(model) ? model : [model]
+    let selectedModel: string | undefined
+
+    if (rotation?.enabled && models.length > 1) {
+      selectedModel = selectAvailableModel(models) ?? models[0]
+    } else {
+      selectedModel = models.length > 0 ? models[0] : undefined
+    }
+
+    merged.model = selectedModel
+  }
+
+  if (rotation) {
+    merged.rotation = rotation as RotationConfig | undefined
   }
 
   return merged
@@ -155,7 +183,7 @@ export function createBuiltinAgents(
     if (disabledAgents.includes(agentName)) continue
 
     const override = agentOverrides[agentName]
-    const model = override?.model ?? systemDefaultModel
+    const model = normalizeModel(override?.model, systemDefaultModel, override?.rotation)
 
     let config = buildAgent(source, model, mergedCategories, gitMasterConfig)
 
@@ -182,7 +210,7 @@ export function createBuiltinAgents(
 
   if (!disabledAgents.includes("Sisyphus")) {
     const sisyphusOverride = agentOverrides["Sisyphus"]
-    const sisyphusModel = sisyphusOverride?.model ?? systemDefaultModel
+    const sisyphusModel = normalizeModel(sisyphusOverride?.model, systemDefaultModel, sisyphusOverride?.rotation)
 
     let sisyphusConfig = createSisyphusAgent(sisyphusModel, availableAgents)
 
@@ -200,7 +228,11 @@ export function createBuiltinAgents(
 
   if (!disabledAgents.includes("orchestrator-sisyphus")) {
     const orchestratorOverride = agentOverrides["orchestrator-sisyphus"]
-    const orchestratorModel = orchestratorOverride?.model ?? systemDefaultModel
+    const orchestratorModel = normalizeModel(
+      orchestratorOverride?.model,
+      systemDefaultModel,
+      orchestratorOverride?.rotation
+    )
     let orchestratorConfig = createOrchestratorSisyphusAgent({
       model: orchestratorModel,
       availableAgents,

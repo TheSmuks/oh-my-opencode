@@ -32,6 +32,7 @@ import {
   createSisyphusOrchestratorHook,
   createPrometheusMdOnlyHook,
 } from "./hooks";
+import { createRotationHooks } from "./features/model-rotation/hooks";
 import {
   contextCollector,
   createContextInjectorMessagesTransformHook,
@@ -287,6 +288,10 @@ const OhMyOpenCodePlugin: Plugin = async (ctx) => {
     ? createAutoSlashCommandHook({ skills: mergedSkills })
     : null;
 
+  const modelRotationHooks = isHookEnabled("model-rotation")
+    ? createRotationHooks({ pluginCtx: ctx, config: pluginConfig })
+    : null;
+
   const configHandler = createConfigHandler({
     ctx,
     pluginConfig,
@@ -412,6 +417,7 @@ const OhMyOpenCodePlugin: Plugin = async (ctx) => {
       await interactiveBashSession?.event(input);
       await ralphLoop?.event(input);
       await sisyphusOrchestrator?.handler(input);
+      await modelRotationHooks?.event?.(input);
 
       const { event } = input;
       const props = event.properties as Record<string, unknown> | undefined;

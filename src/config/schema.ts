@@ -76,6 +76,7 @@ export const HookNameSchema = z.enum([
   "agent-usage-reminder",
   "non-interactive-env",
   "interactive-bash-session",
+  "model-rotation",
 
   "thinking-block-validator",
   "ralph-loop",
@@ -93,11 +94,27 @@ export const HookNameSchema = z.enum([
 export const BuiltinCommandNameSchema = z.enum([
   "init-deep",
   "start-work",
+  "rotation-status",
 ])
+
+/**
+ * Model rotation configuration for a single agent
+ * Allows round-robin rotation through multiple models with usage limits and cooldowns
+ */
+export const RotationConfigSchema = z.object({
+  /** Enable model rotation for this agent (default: false) */
+  enabled: z.boolean().default(false),
+  /** What to track: 'calls' (request count) or 'tokens' (token usage) */
+  limitType: z.enum(["calls", "tokens"]).default("calls"),
+  /** Usage limit threshold */
+  limitValue: z.number().min(1).default(100),
+  /** Cooldown period in milliseconds (default: 3600000 = 1 hour) */
+  cooldownMs: z.number().min(0).default(3600000),
+})
 
 export const AgentOverrideConfigSchema = z.object({
   /** @deprecated Use `category` instead. Model is inherited from category defaults. */
-  model: z.string().optional(),
+  model: z.union([z.string(), z.array(z.string())]).optional(),
   variant: z.string().optional(),
   /** Category name to inherit model and other settings from CategoryConfig */
   category: z.string().optional(),
@@ -116,6 +133,8 @@ export const AgentOverrideConfigSchema = z.object({
     .regex(/^#[0-9A-Fa-f]{6}$/)
     .optional(),
   permission: AgentPermissionSchema.optional(),
+  /** Model rotation configuration for round-robin through multiple models */
+  rotation: RotationConfigSchema.optional(),
 })
 
 export const AgentOverridesSchema = z.object({
@@ -339,5 +358,6 @@ export type CategoryConfig = z.infer<typeof CategoryConfigSchema>
 export type CategoriesConfig = z.infer<typeof CategoriesConfigSchema>
 export type BuiltinCategoryName = z.infer<typeof BuiltinCategoryNameSchema>
 export type GitMasterConfig = z.infer<typeof GitMasterConfigSchema>
+export type RotationConfig = z.infer<typeof RotationConfigSchema>
 
 export { AnyMcpNameSchema, type AnyMcpName, McpNameSchema, type McpName } from "../mcp/types"
