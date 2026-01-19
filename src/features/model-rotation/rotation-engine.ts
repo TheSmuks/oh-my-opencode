@@ -65,7 +65,7 @@ export class RotationEngine {
   }
 
   private rotate(currentModel: string, availableModels: string[], reason: string): RotationResult {
-    const nextModel = this.findNextAvailableModel(availableModels)
+    const nextModel = this.findNextAvailableModel(availableModels, currentModel)
 
     if (!nextModel) {
       this.markAllDepleted(availableModels)
@@ -77,14 +77,24 @@ export class RotationEngine {
     return { rotated: true, nextModel, reason, allDepleted: false }
   }
 
-  private findNextAvailableModel(availableModels: string[]): string | null {
+  private findNextAvailableModel(availableModels: string[], currentModel: string): string | null {
     this.stateManager.pruneOldModels(30)
 
     for (const model of availableModels) {
+      if (model === currentModel) continue
+
       const state = this.stateManager.getModelState(model)
 
       if (!state) {
         return model
+      }
+
+      const cooldownUntil = state.usage.cooldownUntil
+      if (state.usage.inCooldown && typeof cooldownUntil === "string") {
+        if (new Date() >= new Date(cooldownUntil)) {
+          this.stateManager.markAvailable(model)
+          return model
+        }
       }
 
       if (!state.depleted && !this.stateManager.isInCooldown(model)) {
@@ -104,7 +114,7 @@ export class RotationEngine {
   resetCooldowns(): void {
     for (const model of this.stateManager.getAllModels()) {
       const state = this.stateManager.getModelState(model)
-      if (state?.usage.inCooldown && !state.depleted) {
+      if (state?.usage.inCooldown) {
         this.stateManager.markAvailable(model)
       }
     }
@@ -129,7 +139,7 @@ export class RotationEngine {
     return true
   }
 
-  getNextModel(availableModels: string[]): string | null {
-    return this.findNextAvailableModel(availableModels)
+  getNextModel(availableModels: string[], currentModel: string): string | null {
+    return this.findNextAvailableModel(availableModels, currentModel)
   }
 }
